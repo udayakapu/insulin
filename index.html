@@ -84,10 +84,11 @@
 	function buildDoseCalculationHtml(){
 		var iorder = new InsulinOrder('Novolog');
 		calcInsulinUnits(iorder);
-		var calcHtml = "((["+recent_glucose_value.value+"]-["+iorder.targetGlucose+"])/["+iorder.sensitivityDivisor+"])";
+		
+		var calcHtml = "((["+recent_glucose_value.value+"]-["+iorder.targetGlucose+"])<br/><img src='images/hr.jpg' width='101' height='2' /><br/>["+iorder.sensitivityDivisor+"])";
 	calcHtml = calcHtml + "+(["+iorder.carbsConsumed+"] / ["+iorder.carbSensitivityDivisor+"])";
 	
-	  document.getElementById("formula_id").innerHTML = calcHtml;
+	  document.getElementById("formula_id").innerHTML = "<h2>"+calcHtml+"</h2>";
 	  
 	}
 	
@@ -120,7 +121,7 @@ function LabResult(name){
 // create instance of LabResult and populate
 	var recent_glucose_value = new LabResult('Glucose');
 		recent_glucose_value.date = new Date();
-		recent_glucose_value.value = 140;
+		recent_glucose_value.value = 245;
 
 // validate InsulinOrder
 function validateInsulinOrder(order){
@@ -152,19 +153,19 @@ function validateInsulinOrder(order){
 }
 
 function calcInsulinUnits(iorder){
-	
-	validateInsulinOrder(iorder);
-	
+	validateInsulinOrder(iorder);	
 	// At this point it is assumed that all values have been check for 
 	// realistic ranges and units. Simply do the calculation and return the value.
 	glucoseCorrection = Math.floor((recent_glucose_value.value - iorder.targetGlucose) / iorder.sensitivityDivisor);
-	carbCorrection = calcCarbCoverage(iorder.carbsConsumed, iorder.carbSensitivityDivisor);
+	carbCorrection = calcCarbCoverage(iorder);
 	dose = Math.floor(glucoseCorrection) + Math.floor(carbCorrection);
-     alert(dose);
-	return Math.floor(dose); 
+	if(dose != ""){
+		document.getElementById("dose_id").innerHTML = "<hr/><h1>Admnister "+Math.floor(dose)+" units of Novolog</h1>"; 
+	}
 }
 
 function calcCarbCoverage(iorder){
+	alert("carbs consumed:"+iorder.carbsConsumed);
 	if (!isNaN(iorder.carbsConsumed)){
 		return Math.floor(iorder.carbsConsumed/iorder.carbSensitivityDivisor);
 	} else {
@@ -371,7 +372,7 @@ function calcCarbCoverage(iorder){
 carbohydrates &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Ref Range: 5 - 40</p>
 			    <p>
 			      <input type="submit" name="submit" id="submit" value="Save Changes" />
-			    </p>
+			     </p>
 			    
 			</div>
 			</div>
@@ -460,8 +461,8 @@ carbohydrates &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Ref Range: 5 - 40</p>
 			<input type="button" name="button3" id="button3" value="Calculate Dose" onClick="buildDoseCalculationHtml();calcInsulinUnits();" />
 			  <hr />
                <span id="formula_id"></span>
-               <hr/>
-					
+               	<span id="dose_id"></span>
+			  <br/><br/>
 		      <p>
 		        <input type="submit" name="submit" id="submit" value="Save Dose Details" />
 		      </p>
