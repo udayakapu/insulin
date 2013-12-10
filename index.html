@@ -9,7 +9,7 @@
 <link href="style.css" rel="stylesheet" type="text/css" />
 <link href="modules_css.css" rel="stylesheet" type="text/css" />
 <script>
-
+    //Terminology module - start
 	var terminologyObject = new Object();
 	terminologyObject['847265'] = "Novolog 100 units/mL (standard formulary)";
 	terminologyObject['450725013'] = "Interval ordering (Q4, Q6 etc.,)";
@@ -19,10 +19,125 @@
 	terminologyObject['other'] = "other";
 	terminologyObject['0200'] = "0200";
 	terminologyObject['C0587181'] = "2 hours postprandial";
+	//Terminology module - end
+	
+	//lab module - start
+	
+	function LabResult(name){  
+		this.labName = name;
+		this.date = new Date();
+		this.value = 0;
+	}
+	
+	// create instance of LabResult and populate
+	var recent_glucose_value = new LabResult('Glucose');
+		recent_glucose_value.date = new Date()
+		recent_glucose_value.value = 245;
+		recent_glucose_value.date = "12/10/2013 04:00";
+		
+	//lab module - end	
+	
+	//Patient module - start
+	function Patient(name, birthdate, mrn){
+		this.patientName = name;
+		this.birthdate = birthdate;
+		this.mrn = mrn;
+	}
+	
+	var patient = new Patient("TEST, ALEX", "4/2/1980","1234567");
+	 
+	function loadPatient(patient){
+	  document.getElementById("patid").innerHTML = patient.patientName;
+	  document.getElementById("dob").innerHTML = patient.birthdate;
+	  document.getElementById("mrn").innerHTML = patient.mrn;
+	}
+	
+	function changePatient() {
+	  var patient = new Patient("TEST, SAM", "1/1/1978","4567893");	
+	  loadPatient(patient);
+	  clearAll();
+	}
+	
+	//Patient module - end
+	
+	//CDS Module - Start
+	function calcInsulinUnits(iorder){	
+		validateInsulinOrder(iorder);		
+		// At this point it is assumed that all values have been check for 
+		// realistic ranges and units. Simply do the calculation and return the value.
+		var glucoseCorrection = Math.floor((recent_glucose_value.value - iorder.targetGlucose) / iorder.sensitivityDivisor);
+		var carbCorrection = 0;
+		
+		if(iorder.carbsConsumed != "" && iorder.carbSensitivityDivisor != ""){
+			carbCorrection = calcCarbCoverage(iorder);
+		}
+		
+		dose = Math.floor(glucoseCorrection) + Math.floor(carbCorrection);
+		
+		if(dose != ""){
+			document.getElementById("dose_id").innerHTML = "<hr/><h1>Administer "+Math.floor(dose)+" units of Novolog</h1>"; 
+		}
+		
+		return dose;
+    }
+
+	function calcCarbCoverage(iorder){	
+		if (!isNaN(iorder.carbsConsumed)){
+			return Math.floor(iorder.carbsConsumed/iorder.carbSensitivityDivisor);
+		} else {
+			alert("Invalid carbohydrate amount.");
+		}
+	}
+	
+   //CDS module - end
+   
+   //Clinical Data Repository - Start
+   function saveData(){
+	   alert("Data is saved successfully");
+   }
+   
+   function saveDoseDetails(){
+	   alert("Dose Details are saved successfully");
+   }
+   
+   function saveScannedMeds(){
+	   alert("Scanned meds are saved successfully");
+   }
+   
+   //Clinical Data Repository - End
+   
+   // create insulin order object
+	function InsulinOrder(name){
+		this.insulinName = name;
+		this.targetGlucose = document.getElementById("g_target_id").value;
+		this.sensitivityDivisor = document.getElementById("s_devisor_id").value;
+		this.carbSensitivityDivisor = document.getElementById("c_devisor_id").value;
+		this.carbsConsumed = document.getElementById("carb_consume_id").value;
+	}
+	
+   //Client Side Javascript - start
+	
 	var cal_dose_btn_flag = false;
 	
-	
-    function showMedAdminSection(){
+	function showMealTimeOrderChkBxs() {
+   	    var ncid = "";		
+		var rd_length = document.getElementsByName("freq").length;
+			
+		for(i=0; i<rd_length; i++) {
+			if(document.getElementsByName("freq").item(i).checked){
+				ncid = document.getElementsByName("freq").item(i).value;			
+				break;
+			}
+		}	
+		
+		if(ncid == "1221322014"){
+			document.getElementById('meal_time_id1').style.display="block";
+		}else{
+			document.getElementById('meal_time_id1').style.display="none";
+		}
+    }
+    
+	function showMedAdminSection(){
 		if(enableDisableFields() && (document.getElementById("c_devisor_id").value == "")){
 			document.getElementById("warning_id").innerHTML = "Please enter carbohydrate coverage information.";
 			return false;
@@ -79,11 +194,11 @@
 		}
 		
 		if(document.getElementById("c_devisor_id").value != ""){
-			document.getElementById("carb_cov_id").innerHTML = document.getElementById("c_devisor_id").value;
+			document.getElementById("carb_cov_id").innerHTML = "1 unit for every&nbsp;"+document.getElementById("c_devisor_id").value+"&nbsp;carbohydrates consumed";
 		}
 		
 		if(recent_glucose_value != ""){
-			document.getElementById("glucose_id").innerHTML = recent_glucose_value.value;
+			document.getElementById("glucose_id").innerHTML = recent_glucose_value.value+"&nbsp;mg/dL ("+recent_glucose_value.date+")";
 		}
 		
 		var selected_med_id = document.getElementById("sel_med_id").value;
@@ -95,7 +210,6 @@
 	}
 	
 	function buildDoseCalculationHtml(){
-		
 		var iorder = new InsulinOrder('Novolog');
 		var dose = calcInsulinUnits(iorder);
 		
@@ -126,166 +240,114 @@
 	}
 	
 	
-	// 1. Place insulin order data into InsulinOrder object.
-// 2. On administration, get InsulinOrder object and validate carbohydrates entered.
-// 3. Calculate units
-
-// create insulin order object
-function InsulinOrder(name){
-	this.insulinName = name;
-	this.targetGlucose = document.getElementById("g_target_id").value;
-	this.sensitivityDivisor = document.getElementById("s_devisor_id").value;
-	this.carbSensitivityDivisor = document.getElementById("c_devisor_id").value;
-	this.carbsConsumed = document.getElementById("carb_consume_id").value;
-}
-
-// create lab object
-function LabResult(name){
-	this.labName = name;
-	this.date = new Date();
-	this.value = 0;
-}
-
-// create instance of LabResult and populate
-	var recent_glucose_value = new LabResult('Glucose');
-		recent_glucose_value.date = new Date();
-		recent_glucose_value.value = 245;
-
-// validate InsulinOrder
-function validateInsulinOrder(order){
-	targetGlucoseConfirm = true;
-	sensitivityDivisorConfirm = true;
-	carbSensitivityDivisorConfirm = true;
+	// validate InsulinOrder
+	function validateInsulinOrder(order){
+		targetGlucoseConfirm = true;
+		sensitivityDivisorConfirm = true;
+		carbSensitivityDivisorConfirm = true;
+		
+		//console.log(order.insulinName.toLowerCase());
+		if (!(order.insulinName.toLowerCase().indexOf("humalog") > -1 || order.insulinName.toLowerCase().indexOf("novolog") > -1)){
+			return false;
+		}
 	
-	//console.log(order.insulinName.toLowerCase());
-	if (!(order.insulinName.toLowerCase().indexOf("humalog") > -1 || order.insulinName.toLowerCase().indexOf("novolog") > -1)){
-		return false;
+		//console.log(order.targetGlucose);
+		if (isNaN(order.targetGlucose) || order.targetGlucose < 80 || order.targetGlucose > 190){
+			targetGlucoseConfirm = confirm("Target insulin is outside normal range.  Continue?");
+		}
+		
+		//console.log(order.sensitivityDivisor);
+		if (isNaN(order.sensitivityDivisor) || order.sensitivityDivisor < 10 || order.sensitivityDivisor > 60){
+			sensitivityDivisorConfirm = confirm("Sensitivity Divisor is outside normal range.  Continue?");
+		}
+		
+		//console.log(order.carbSensitivityDivisor);
+		if (isNaN(order.carbSensitivityDivisor) || order.carbSensitivityDivisor < 5 || order.carbSensitivityDivisor > 40){
+			carbSensitivityDivisorConfirm = confirm("Carbohydrate Sensitivity Divisor is outside normal range.  Continue?");
+		}
+		
+		return targetGlucoseConfirm && sensitivityDivisorConfirm && carbSensitivityDivisorConfirm;
 	}
 
-	//console.log(order.targetGlucose);
-	if (isNaN(order.targetGlucose) || order.targetGlucose < 80 || order.targetGlucose > 190){
-		targetGlucoseConfirm = confirm("Target insulin is outside normal range.  Continue?");
-	}
-	
-	//console.log(order.sensitivityDivisor);
-	if (isNaN(order.sensitivityDivisor) || order.sensitivityDivisor < 10 || order.sensitivityDivisor > 60){
-		sensitivityDivisorConfirm = confirm("Sensitivity Divisor is outside normal range.  Continue?");
-	}
-	
-	//console.log(order.carbSensitivityDivisor);
-	if (isNaN(order.carbSensitivityDivisor) || order.carbSensitivityDivisor < 5 || order.carbSensitivityDivisor > 40){
-		carbSensitivityDivisorConfirm = confirm("Carbohydrate Sensitivity Divisor is outside normal range.  Continue?");
-	}
-	
-	return targetGlucoseConfirm && sensitivityDivisorConfirm && carbSensitivityDivisorConfirm;
-}
 
-function calcInsulinUnits(iorder){
-	
-	validateInsulinOrder(iorder);		
-	// At this point it is assumed that all values have been check for 
-	// realistic ranges and units. Simply do the calculation and return the value.
-	var glucoseCorrection = Math.floor((recent_glucose_value.value - iorder.targetGlucose) / iorder.sensitivityDivisor);
-	var carbCorrection = 0;
-	
-	if(iorder.carbsConsumed != "" && iorder.carbSensitivityDivisor != ""){
-	 	carbCorrection = calcCarbCoverage(iorder);
+	function enableDisableFields() {
+		var chk_c_devisor = document.getElementById("chk_c_devisor_id").checked;
+		
+		if(!chk_c_devisor){
+			document.getElementById("c_devisor_id").disabled = true;
+			document.getElementById("carb_consume_id").disabled = true;
+			document.getElementById("c_devisor_id").value = "";
+			document.getElementById("carb_consume_id").value = "";
+			document.getElementById("c_devisor_id").style.backgroundColor = "#CCCCCC";   
+			document.getElementById("carb_consume_id").style.backgroundColor = "#CCCCCC";   
+		}else{
+			document.getElementById("c_devisor_id").disabled = false;
+			document.getElementById("carb_consume_id").disabled = false;
+			document.getElementById("c_devisor_id").style.backgroundColor = "";   
+			document.getElementById("carb_consume_id").style.backgroundColor = ""; 
+		}	
+		
+		return chk_c_devisor;
+		
 	}
-	
-	dose = Math.floor(glucoseCorrection) + Math.floor(carbCorrection);
-	
-	if(dose != ""){
-		document.getElementById("dose_id").innerHTML = "<hr/><h1>Admnister "+Math.floor(dose)+" units of Novolog</h1>"; 
-	}
-	
-	return dose;
-}
 
-function calcCarbCoverage(iorder){	
-	if (!isNaN(iorder.carbsConsumed)){
-		return Math.floor(iorder.carbsConsumed/iorder.carbSensitivityDivisor);
-	} else {
-		alert("Invalid carbohydrate amount.");
+	function alertErrMessages() {	
+		if(document.getElementById("g_target_id").value == ""){
+			document.getElementById("span_g_target_id").innerHTML = "Please enter target glucose lab value.<br/>";		
+			cal_dose_btn_flag = false;
+		}else{
+			document.getElementById("span_g_target_id").innerHTML = "";
+			cal_dose_btn_flag = true;
+		}
+		
+		if(document.getElementById("s_devisor_id").value == ""){
+			document.getElementById("span_sensitivity_devisor_id").innerHTML = "Please enter sensitivity devisor value.<br/>";
+			cal_dose_btn_flag = false;
+		}else{
+			document.getElementById("span_sensitivity_devisor_id").innerHTML = "";
+			cal_dose_btn_flag = true;
+		}
 	}
-}
 
-function enableDisableFields() {
-	var chk_c_devisor = document.getElementById("chk_c_devisor_id").checked;
-	
-	if(!chk_c_devisor){
-		document.getElementById("c_devisor_id").disabled = true;
-		document.getElementById("carb_consume_id").disabled = true;
-		document.getElementById("c_devisor_id").value = "";
-		document.getElementById("carb_consume_id").value = "";
-		document.getElementById("c_devisor_id").style.backgroundColor = "#CCCCCC";   
-		document.getElementById("carb_consume_id").style.backgroundColor = "#CCCCCC";   
-	}else{
-		document.getElementById("c_devisor_id").disabled = false;
-		document.getElementById("carb_consume_id").disabled = false;
-		document.getElementById("c_devisor_id").style.backgroundColor = "";   
-		document.getElementById("carb_consume_id").style.backgroundColor = ""; 
-	}	
-	
-	return chk_c_devisor;
-	
-}
 
-function alertErrMessages() {	
-	if(document.getElementById("g_target_id").value == ""){
-		document.getElementById("span_g_target_id").innerHTML = "Please enter target glucose lab value.<br/>";		
-		cal_dose_btn_flag = false;
-	}else{
-		document.getElementById("span_g_target_id").innerHTML = "";
-		cal_dose_btn_flag = true;
+	function clearAll(){
+	   document.getElementById("0200").checked = false;
+	   document.getElementById("2hr").checked =  false;
+	   document.getElementById("qac").checked = false;
+	   document.getElementById("qhs").checked = false;
+	   
+	   document.getElementById("freq_0").checked =  false;
+	   document.getElementById("freq_1").checked =  false;
+	   document.getElementById("freq_2").checked =  false; 
+	   
+	   document.getElementById("c_devisor_id").value = "";
+	   document.getElementById("s_devisor_id").value = "";
+	   document.getElementById("carb_cov_id").value = "";
+	   document.getElementById("carb_consume_id").value = "";
+	   document.getElementById("chk_c_devisor_id").checked = false;	
+	   document.getElementById("g_target_id").value = "";
+	   
+	   //span elements
+	   document.getElementById("warning_id").innerHTML = "";
+	   document.getElementById("span_g_target_id").innerHTML = "";
+	   document.getElementById("span_sensitivity_devisor_id").innerHTML = "";
+	   document.getElementById("span_carb_consumed_id").innerHTML = "";
+	   document.getElementById("drug_id").innerHTML = "";   
+	   document.getElementById("glucose_id").innerHTML = "";
+	   document.getElementById("glucose_target_id").innerHTML = "";
+	   document.getElementById("sensivity_devisor_id").innerHTML = "";
+	   document.getElementById("order_freq_id").innerHTML = "";
+	   document.getElementById("carb_cov_id").innerHTML = "";
+	   document.getElementById("formula_id").innerHTML = "";
+	   document.getElementById("dose_id").innerHTML = "";
+	   
 	}
-	
-	if(document.getElementById("s_devisor_id").value == ""){
-		document.getElementById("span_sensitivity_devisor_id").innerHTML = "Please enter sensitivity devisor value.<br/>";
-		cal_dose_btn_flag = false;
-	}else{
-		document.getElementById("span_sensitivity_devisor_id").innerHTML = "";
-		cal_dose_btn_flag = true;
-	}
-}
-
-function clearAll(){
-   document.getElementById("0200").checked = false;
-   document.getElementById("2hr").checked =  false;
-   document.getElementById("qac").checked = false;
-   document.getElementById("qhs").checked = false;
-   
-   document.getElementById("freq_0").checked =  false;
-   document.getElementById("freq_1").checked =  false;
-   document.getElementById("freq_2").checked =  false; 
-   
-   document.getElementById("c_devisor_id").value = "";
-   document.getElementById("s_devisor_id").value = "";
-   document.getElementById("carb_cov_id").value = "";
-   document.getElementById("carb_consume_id").value = "";
-   document.getElementById("chk_c_devisor_id").checked = false;	
-   document.getElementById("g_target_id").value = "";
-   
-   //span elements
-   document.getElementById("warning_id").innerHTML = "";
-   document.getElementById("span_g_target_id").innerHTML = "";
-   document.getElementById("span_sensitivity_devisor_id").innerHTML = "";
-   document.getElementById("span_carb_consumed_id").innerHTML = "";
-   document.getElementById("drug_id").innerHTML = "";   
-   document.getElementById("glucose_id").innerHTML = "";
-   document.getElementById("glucose_target_id").innerHTML = "";
-   document.getElementById("sensivity_devisor_id").innerHTML = "";
-   document.getElementById("order_freq_id").innerHTML = "";
-   document.getElementById("carb_cov_id").innerHTML = "";
-   document.getElementById("formula_id").innerHTML = "";
-   document.getElementById("dose_id").innerHTML = "";
-   
-}
 
 	
 </script>
 
 </head>
-<body onload="showMedSection();enableDisableFields();">
+<body onload="showMedSection();enableDisableFields();showMealTimeOrderChkBxs();loadPatient(patient);">
 <div id="wrapper">
 <div id="">
                 <h2 align="center" class="m_mainHeader_1"><strong><em>	Nursing Patient Dashboard / Reporting</em></strong></h2>
@@ -311,8 +373,8 @@ function clearAll(){
         <td class="m_topMiddle" height="2"></td>
       </tr>
       <tr>
-        <td class="m_mainHeader_1" colspan="2"><input type="button" name="button2" id="button2" value="Change Patient" /> 
-             &nbsp;&nbsp;&nbsp;&nbsp;Patient: TEST, DAVID&nbsp; &nbsp;&nbsp;&nbsp;&nbsp;MRN: 0123456789&nbsp;&nbsp;&nbsp;&nbsp;DOB: 4/1/1980</td>
+        <td class="m_mainHeader_1" colspan="2"><input type="button" name="button2" id="button2" value="Change Patient" onclick="changePatient();" /> 
+             &nbsp;&nbsp;&nbsp;&nbsp;Patient: <span id="patid"></span>&nbsp; &nbsp;&nbsp;&nbsp;&nbsp;MRN: <span id="mrn"></span>&nbsp;&nbsp;&nbsp;&nbsp;DOB: <span id="dob"></span></td>
       </tr>
       </table>  
   <table width="100%" border="0" cellspacing="0" cellpadding="0">
@@ -377,7 +439,7 @@ function clearAll(){
         <td class="m_mainHeader_1" colspan="2">Medications</td>
       </tr>
       </table>
-  <span id="warning_id"></span>
+  <div align="center"><span id="warning_id" class="m_warningRed"></span></div>
   <div id="page">
 	<div id="page-bgtop">
 	<div id="page-bgbtm">
@@ -409,23 +471,23 @@ function clearAll(){
                               <tr><td>
                                 <p>
                               <label>
-                                <input type="radio" name="freq" value="450725013" id="freq_0" />
+                                <input type="radio" name="freq" value="450725013" id="freq_0" onclick="showMealTimeOrderChkBxs();" />
                               Interval ordering (Q4, Q6 etc.,)</label>
                               <br />
                               <label>
-                                <input type="radio" name="freq" value="1221322014" id="freq_1" />
+                                <input type="radio" name="freq" value="1221322014" id="freq_1" checked="checked" onclick="showMealTimeOrderChkBxs();"/>
                                 Meal time ordering</label>
                               <br />
                               <label>
-                                <input type="radio" name="freq" value="other" id="freq_2" />
+                                <input type="radio" name="freq" value="other" id="freq_2" onclick="showMealTimeOrderChkBxs();"/>
                                 Other</label>
                               <br />
                             </p>
                               </td></tr>
                             </table>
                         </td>
-                 
-                    <td valign="top"> 
+                    <div id="meal_time_id">
+                    <td valign="top" id="meal_time_id1"> 
                         <table border="0" cellpadding="2" cellspacing="1">
                           <tr><td><table width="200">
                             <tr>
@@ -451,7 +513,7 @@ function clearAll(){
                           </table></td></tr>
                         </table>
                     </td> 
-                    
+                    </div>
                     </tr>
                 </table>   
 				</div>
@@ -465,21 +527,18 @@ function clearAll(){
 				<hr />
 			    <p>
 			      <label for="textfield" style="font-size: 12px"> Glucose Target:</label>&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
-				    <input name="g_target_id" type="text" id="g_target_id" size="10"  />
-				    mg/dl &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; &nbsp; Ref Range: 80 - 190</p> 
-			    <p>
+				    <input name="g_target_id" type="text" id="g_target_id" size="10"  /> </p>
+                <p>    
 			    <label for="textfield2" style="font-size: 12px">Sensitivity Divisor:</label>&nbsp;&nbsp;&nbsp;
 		        <input name="s_devisor_id" type="text" id="s_devisor_id" size="10" />
-		        &nbsp; &nbsp; &nbsp; &nbsp;&nbsp; &nbsp; &nbsp; &nbsp;&nbsp; &nbsp; &nbsp; &nbsp;&nbsp; Ref Range: 10 - 60
 			     </p>
 			    <p>
 			      <input type="checkbox" name="chk_c_devisor_id" id="chk_c_devisor_id" onclick="enableDisableFields();"/>
                   <label for="checkbox"><span style="font-size: 12px">Use Carbohydrate:Insulin Sensitivity of 1 unit</span> = </label>
 			    
-		          <input name="c_devisor_id" type="text" id="c_devisor_id" size="10" />
-carbohydrates &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Ref Range: 5 - 40</p>
+		          <input name="c_devisor_id" type="text" id="c_devisor_id" size="10" /></p>
 			    <p>
-			      <input type="submit" name="submit" id="submit" disabled="disabled" value="Save Changes" />
+			      <input type="submit" name="submit" id="submit" value="Save Changes" onClick="saveData();"/>
                   <input type="button" name="clear_med_id" id="clear_med_id" value="Clear" onClick="clearAll();" />
 			    </p>
 			    
@@ -495,7 +554,7 @@ carbohydrates &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Ref Range: 5 - 40</p>
 				  <h2>Menu</h2>
 					<ul>
 					  <li><a href="#">Metoprolol</a></li>
-					  <li><a href="#">Novolog</a></li>
+					  <li class="CurrentPregnancyRow"><a href="#">Novolog</a></li>
 					  <li><a href="#">Alprazolam</a></li>
 					  <li><a href="#">Ondansetron</a></li>
                       <li><a href="#">Pantoprazole</a></li>
@@ -533,9 +592,10 @@ carbohydrates &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Ref Range: 5 - 40</p>
         <td class="m_mainHeader_1" colspan="2">Medication Administration</td>
       </tr>
       </table>
-  <span id="span_g_target_id"></span>
-  <span id="span_sensitivity_devisor_id"></span>  
-  <span id="span_carb_consumed_id"></span>     
+  <div align="center"><span id="span_g_target_id" class="m_warningRed"></span>
+   	<span id="span_sensitivity_devisor_id" class="m_warningRed"></span>
+  	<span id="span_carb_consumed_id" class="m_warningRed"></span>
+  </div>     
   <div id="page">
 	<div id="page-bgtop">
         <div id="content">
@@ -576,8 +636,11 @@ carbohydrates &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Ref Range: 5 - 40</p>
                	<span id="dose_id"></span>
 			  <br/><br/>
 		      <p>
-		        <input type="submit" name="submit" id="submit" disabled="disabled" value="Save Dose Details" />
+		        <input type="submit" name="submit" id="submit" value="Save Dose Details" onClick="saveDoseDetails();"/>
                 <input type="button" name="clear_med_admin_id" id="clear_med_admin_id" value="Clear" onClick="clearAll();" />
+                &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp; 
+                 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
+		        <input type="button" name="button3" id="button3" value="Save Scanned Medications &quot;Administered&quot;" onClick="saveScannedMeds();"/>
 		      </p>			    
 			</div>
 			</div>
@@ -591,8 +654,8 @@ carbohydrates &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;Ref Range: 5 - 40</p>
 			    <h2>Scanned Meds</h2>
 				  <ul>
 				    <li>[X] Alprazolam</li>
-				    <li><a href="#">[X] Ondansetron</a></li>
-				    <li>[X] Novolog</li>					  
+				    <li>[X] Ondansetron</li>
+				    <li class="CurrentPregnancyRow"><a href="#">[X] Novolog</a></li>					  
 			    </ul>
 			  </li>
 			  <li>
